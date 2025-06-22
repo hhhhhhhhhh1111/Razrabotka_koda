@@ -36,6 +36,7 @@ namespace Desktop.Repository
 
             CurrentUser = newUser;
 
+
             return true;
         }
 
