@@ -50,7 +50,6 @@ namespace Desktop.Repository
                 return false;
             }
 
-
             CurrentUser = user;
 
             return true;
