@@ -14,20 +14,14 @@ namespace Desktop
     public partial class Main : Window, INotifyPropertyChanged
     {
         private string _username;
-        private ObservableCollection<TaskItem> _taskList;
         private ObservableCollection<TaskItem> _filteredTaskList;
         private TaskItem _selectedTask;
+        private TaskRepository _taskRepository;
 
         public string Username
         {
             get => _username;
             set { _username = value; OnPropertyChanged(); }
-        }
-
-        public ObservableCollection<TaskItem> TaskList
-        {
-            get => _taskList;
-            set { _taskList = value; OnPropertyChanged(); }
         }
 
         public ObservableCollection<TaskItem> FilteredTaskList
@@ -42,22 +36,19 @@ namespace Desktop
             set { _selectedTask = value; OnPropertyChanged(); }
         }
 
+        public TaskRepository TaskRepository
+        {
+            get => _taskRepository;
+            set => _taskRepository = value;
+        }
+
         public Main()
         {
             InitializeComponent();
             DataContext = this;
 
-            TaskList = new ObservableCollection<TaskItem>
-            {
-                new TaskItem("Go fishing with Stephen", new DateTime(2022, 1, 1, 9, 0, 0), "Отдых"),
-                new TaskItem("Go fishing with Stephen", new DateTime(2022, 1, 1, 9, 0, 0), "Отдых"),
-                new TaskItem("Read the book Zlatan", new DateTime(2022, 1, 1, 9, 0, 0), "Учеба"),
-                new TaskItem("Meet according with design team...", new DateTime(2022, 1, 1, 9, 0, 0), "Работа"),
-                new TaskItem("Meet according with design team...", new DateTime(2022, 1, 1, 9, 0, 0), "Работа"),
-                new TaskItem("Meet according with design team...", new DateTime(2022, 1, 1, 9, 0, 0), "Работа"),
-            };
-
-            FilteredTaskList = new ObservableCollection<TaskItem>(TaskList);
+            _taskRepository = new TaskRepository();
+            FilteredTaskList = new ObservableCollection<TaskItem>();
 
             if (UserRepository.CurrentUser != null)
             {
@@ -69,9 +60,26 @@ namespace Desktop
             }
         }
 
+        private void CompleteButtonClick(object sender, RoutedEventArgs e)
+        {
+            if (SelectedTask != null)
+            {
+                _taskRepository.CompleteTask(SelectedTask);
+                MessageBox.Show($"Задача \"{SelectedTask.Name}\" выполнена!");
+                FilteredTaskList.Remove(SelectedTask);
+                SelectedTask = null;
+            }
+        }
+
         private void ShowAllTasks_Click(object sender, RoutedEventArgs e)
         {
-            FilteredTaskList = new ObservableCollection<TaskItem>(TaskList);
+            FilteredTaskList = _taskRepository.GetAllTasks();
+        }
+
+        private void OpenHistoryWindow_Click(object sender, RoutedEventArgs e)
+        {
+            Window2 historyWindow = new Window2(_taskRepository.CompletedTasks);
+            historyWindow.Show();
         }
 
         private void FilterByCategory_Click(object sender, RoutedEventArgs e)
@@ -79,18 +87,7 @@ namespace Desktop
             string category = (sender as System.Windows.Controls.Label)?.Tag?.ToString();
             if (!string.IsNullOrEmpty(category))
             {
-                FilteredTaskList = new ObservableCollection<TaskItem>(TaskList.Where(task => task.Category == category));
-            }
-        }
-
-        private void CompleteButtonClick(object sender, RoutedEventArgs e)
-        {
-            if (SelectedTask != null)
-            {
-                MessageBox.Show($"Задача \"{SelectedTask.Name}\" выполнена!");
-                TaskList.Remove(SelectedTask);
-                FilteredTaskList.Remove(SelectedTask);
-                SelectedTask = null;
+                FilteredTaskList = _taskRepository.GetTasksByCategory(category);
             }
         }
 
@@ -99,15 +96,30 @@ namespace Desktop
             if (SelectedTask != null)
             {
                 MessageBox.Show($"Задача \"{SelectedTask.Name}\" удалена!");
-                TaskList.Remove(SelectedTask);
+                _taskRepository.RemoveTask(SelectedTask);
                 FilteredTaskList.Remove(SelectedTask);
                 SelectedTask = null;
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged; protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void AddTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            var addTaskWindow = new AddTaskWindow();
+            if (addTaskWindow.ShowDialog() == true)
+            {
+                var newTask = addTaskWindow.NewTask;
+                if (newTask != null)
+                {
+                    _taskRepository.AddTask(newTask);
+                    FilteredTaskList.Add(newTask);
+                }
+            }
         }
     }
 
@@ -116,7 +128,7 @@ namespace Desktop
         private string _name;
         private DateTime _date;
         private string _category;
-
+        private string _description;
         public string Name
         {
             get => _name;
@@ -135,13 +147,20 @@ namespace Desktop
             set { _category = value; OnPropertyChanged(); }
         }
 
+        public string Description
+        {
+            get => _description;
+            set { _description = value; OnPropertyChanged(); }
+        }
+
         public string FormattedDate => Date.ToString("f", new CultureInfo("ru-RU"));
 
-        public TaskItem(string name, DateTime date, string category)
+        public TaskItem(string name, DateTime date, string category, string description = "")
         {
             Name = name;
             Date = date;
             Category = category;
+            Description = description;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -149,19 +168,6 @@ namespace Desktop
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-    }
-
-    public class NullToVisibilityConverter : System.Windows.Data.IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return value == null ? Visibility.Collapsed : Visibility.Visible;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
         }
     }
 }

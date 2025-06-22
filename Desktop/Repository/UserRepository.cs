@@ -36,7 +36,6 @@ namespace Desktop.Repository
 
             CurrentUser = newUser;
 
-
             return true;
         }
 
@@ -50,7 +49,6 @@ namespace Desktop.Repository
                 errorMessage = "Неверное имя пользователя или пароль.";
                 return false;
             }
-
 
             CurrentUser = user;
 
