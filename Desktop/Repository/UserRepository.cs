@@ -26,6 +26,7 @@ namespace Desktop.Repository
                 return false;
             }
 
+
             var newUser = new UserModel
             {
                 Username = username,
